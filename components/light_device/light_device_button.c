@@ -179,7 +179,7 @@ static void _led_init(uint8_t pin, uint8_t status){
 static KEY_EVENT_T _keys_start_hold_event_creat(_Keys_event_t *p_key_press, uint32_t current_tm){
 	if( p_key_press->hold_event == 0 && p_key_press->recv_press == 0  
 		&& gpio_get_level( p_key_press->pin ) == _KEYS_PRESS_STATUS 
-		&&  DIFF(current_tm, p_key_press->start_time) >= 1100 ){
+		&&  DIFF(current_tm, p_key_press->start_time) >= 250 ){
 		p_key_press->hold_event = 1;
 		return KEYS_EVNET_START_HOLD;
 	}else return KEYS_EVENT_NONE;

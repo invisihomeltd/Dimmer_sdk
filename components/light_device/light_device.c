@@ -42,7 +42,7 @@
 #define S_KEY_VAMODE	("s_vamode")
 #define S_KEY_MINBRI	("s_minbri")
 
-#define _FADE_DIMMER	(10000)	// dimmer fade
+#define _FADE_DIMMER	(6000)	// dimmer fade
 static const char *TAG          = "light_device"; 
 /********
 ** If "Dimmable" then everything works. 
@@ -872,9 +872,9 @@ static mdf_err_t _event_handle_button_td(Evt_mesh_t *p_evt)
 	//light_change_user(0, 0, 1.2, -1);
 	MDF_LOGW("_event_handle_button_td \n");
 	
-	if( -1 == tap_event_active(_SCH_TAP_TD, 1000) )
-		light_change_user(0, 5, 0, -1);
-		//light_change_user(0, 0, 1.2, -1);
+	if( -1 == tap_event_active(_SCH_TAP_TD, -1) )
+		light_change_user(0, 0, 0, -1);
+		//light_change_user(0, 5, 1.2, -1);
 
 	return MDF_OK;
 }
@@ -892,7 +892,7 @@ static mdf_err_t _event_handle_button_dtd(Evt_mesh_t *p_evt)
 {
 	
 	//light_change_user(0, 0, 0, -1);
-	if( -1 == tap_event_active(_SCH_TAP_DTD, 1000) )
+	if( -1 == tap_event_active(_SCH_TAP_DTD, -1) )
 		light_change_user(0, 0, 0, -1);
 	MDF_LOGW("_event_handle_button_dtd \n");
 	return MDF_OK;
