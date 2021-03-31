@@ -40,6 +40,7 @@
 #define S_KEY_DEVID	("s_devid")
 #define S_KEY_DEVTYPE	("s_devtype")
 #define S_KEY_VAMODE	("s_vamode")
+#define S_KEY_LEDMODE	("s_ledmode")
 #define S_KEY_MINBRI	("s_minbri")
 
 #define _FADE_DIMMER	(6000)	// dimmer fade
@@ -64,7 +65,8 @@ typedef struct{
 	uint8_t power;   // status
 	uint8_t ways_3;
 	uint8_t vacationmode;
-	int min_bri;
+	uint8_t min_bri;
+	uint8_t ledmode;
 	
 	uint32_t fade;	// ms
 	Dev_type_t type;
@@ -91,7 +93,7 @@ mdf_err_t _sys_facotry_reset(void){
 }
  mdf_err_t light_min_bri_set(int bri){
 
-	uint8_t m_bri = (uint8_t) ( ( 255 / 100.0) * bri );
+	uint8_t m_bri = (uint8_t) ( ( 255 / 100.0) * bri + .5);
 
 	light.min_bri = bri;
 	
@@ -114,6 +116,18 @@ int light_min_bri_get(void){
 	 return light.vacationmode;
  }
 
+ mdf_err_t light_ledmode_set(uint8_t ledmode){
+
+	light.ledmode = ledmode;
+	mdf_info_save(S_KEY_LEDMODE, (void *)&ledmode, sizeof( uint8_t ) );
+	MDF_LOGD("set ledmode %u \n", ledmode);
+	light_led_indicator();
+	return MDF_OK;
+ }
+  uint8_t light_ledmode_get(void){
+	 return light.ledmode;
+ }
+
  mdf_err_t light_bri_set(uint8_t bri){
 	light.bri = bri;
 	
@@ -126,7 +140,7 @@ int light_min_bri_get(void){
 int light_bri_user_get(void){
 	MDF_LOGD("get bri %u \n", light.bri);
 
-	return (int) ((light.bri * 100.0 ) / 255.0 );
+	return (int) ((light.bri * 100.0 ) / 255.0 + .5);
 }
  mdf_err_t light_3ways_set(uint8_t ways_3){
 	light.ways_3 = ways_3;
@@ -227,11 +241,26 @@ uint8_t *light_devid_get(void){
 	return light.p_dev_id;
 }
 void light_led_indicator(void){
-	if(LSYS_STATUS_CNN >= light_status_get() && light_bri_get() > 0 && light_power_get() > 0){
-		led_action_set(0,  0);
-	}else{
-		led_action_set(1,  0);
-	}
+	if(light_ledmode_get() == 0){ //led on when load off
+		if(LSYS_STATUS_CNN >= light_status_get() && light_bri_get() > 0 && light_power_get() > 0){
+			led_action_set(1,  0);
+		}else{
+			led_action_set(0,  0);
+		}
+	} else 
+	if(light_ledmode_get() == 1){ //led on when load on
+		if(LSYS_STATUS_CNN >= light_status_get() && light_bri_get() > 0 && light_power_get() > 0){
+			led_action_set(0,  0);
+		}else{
+			led_action_set(1,  0);
+		}
+	} else 
+	if(light_ledmode_get() == 2){ //led on all the time
+			led_action_set(1,  0);
+	} else 
+	if(light_ledmode_get() == 3){ //led off all the time
+			led_action_set(0,  0);
+		}
 }
 /********
 ** If "Dimmable" then everything works. 
@@ -348,7 +377,7 @@ mdf_err_t light_change_raw(uint8_t *p_power, uint8_t *p_bri, uint32_t *p_fade, u
 			uart_cmd_send(UART_CMD_FADE, (void *)&old_fade );
 	}
 	old_fade = light_fade_get();
-	MDF_LOGE("fade = %d ms \n", old_fade);
+	MDF_LOGD("fade = %d ms \n", old_fade);
 
 	// set power
 	// set bri
@@ -357,7 +386,7 @@ mdf_err_t light_change_raw(uint8_t *p_power, uint8_t *p_bri, uint32_t *p_fade, u
 	if(   p_bri && power !=0 ){
 		tmp[0] = *p_bri;
 		memcpy(&tmp[1], &old_fade, sizeof(uint32_t) );
-		light_bri_set(p_bri);
+		light_bri_set(*p_bri);
 		if(*p_bri ==  0  ){
 			light_power_set( 0 );
 		}else{
@@ -429,9 +458,9 @@ mdf_err_t light_change_user(int power_s, int bri_s, float fade_s, int dimmer_s){
 		int min_bri = light_min_bri_get();
 		float f_bri = ( ( (100.0 - min_bri) * bri_s) / 100.0  + min_bri ) * ( (255.0 )/100.0);
 		//bri =( (  (int)(f_bri *10) % 10) > 5 ?((uint8_t)f_bri + 1): (uint8_t)f_bri );
-		bri = (int)f_bri;
+		bri = (uint8_t)f_bri + .5;
 		p_bri = &bri;
-		MDF_LOGD("mim bri %d bri %u \n",  (255 *  min_bri / 100), bri);
+		MDF_LOGD("bri_s = %d mim bri %d bri %u \n", bri_s, (255 *  min_bri / 100), *p_bri);
 		
 		if(p_power == NULL && bri_s == 0 ){
 			power = 0;
@@ -459,7 +488,7 @@ mdf_err_t light_change_user(int power_s, int bri_s, float fade_s, int dimmer_s){
 *****/
 mdf_err_t light_change_by_json(const char *p_src){
 	mdf_err_t ret = MDF_OK;
-	int power = -1, bri = -1, dimmer = -1, vacationmode = 0, commssion = 0, min_bri = 27;
+	int power = -1, bri = -1, dimmer = -1, vacationmode = 0, commssion = 0, min_bri = 27, ledmode = 0;
 	float fade = -1;
 	char *p_name = NULL, *p_type_str = NULL;
 	char time_zone[64] = {0};
@@ -512,13 +541,18 @@ mdf_err_t light_change_by_json(const char *p_src){
 		light_vacationmode_set((uint8_t) vacationmode);
 		MDF_LOGD("Set vacationmode to %d\n", vacationmode);
 	}
+	ret = mlink_json_parse( p_src, "ledmode", &ledmode);
+	if(ret == MDF_OK){
+		light_ledmode_set((uint8_t) ledmode);
+		MDF_LOGD("Set ledmode to %d\n", ledmode);
+	}
 	ret = mlink_json_parse( p_src, "minbrightness", &min_bri);
 	if(ret == MDF_OK){
 		light_min_bri_set( min_bri);
 		MDF_LOGD("Set min bri to %d\n", min_bri);
 	}
 
-	light_change_user(power,  bri, fade, dimmer);
+	light_change_user(power, bri, fade, dimmer);
 
 	// commission
 	ret = mlink_json_parse( p_src, "commssion", &commssion);
@@ -567,10 +601,13 @@ mdf_err_t light_status_alloc(char **pp_dst){
 	mlink_json_pack(&p_json, "power", (int)light_power_get());
 
 	// bri
-	tmp = (100.0 * light_bri_get() ) / 255.0  ;	
+	tmp = (100.0 * light_bri_get() ) / 255.0 +.5  ;	
 	tmp = ( (int)tmp >= light_min_bri_get() )?( 100 * ( tmp - light_min_bri_get() )  /( 100 - light_min_bri_get() ) ) : 0;
+//	tmp = light_bri_user_get();
 	bri = (int) tmp;
 	mlink_json_pack( &p_json, "brightness", (int) bri );
+	mlink_json_pack( &p_json, "bri_user", light_bri_user_get());
+	mlink_json_pack( &p_json, "bri_raw", light_bri_get());
 
 	// fade
 	mlink_json_pack_double( &p_json, "fade",  fade );
@@ -590,6 +627,7 @@ mdf_err_t light_status_alloc(char **pp_dst){
 
     mlink_json_pack(&p_json, "timer", "todo");
 	mlink_json_pack(&p_json, "vacationmode", light_vacationmode_get());
+	mlink_json_pack(&p_json, "ledmode", light_ledmode_get());
 	
 	mlink_json_pack(&p_json, "minbrightness", light_min_bri_get());
 
@@ -828,6 +866,13 @@ static mdf_err_t _light_store_load(void){
 	rc = mdf_info_load( S_KEY_VAMODE, &light.vacationmode, sizeof(uint8_t));
 	if( ESP_OK != rc){
 		light_vacationmode_set(0);
+	}
+
+	// ledmode
+
+	rc = mdf_info_load( S_KEY_LEDMODE, &light.ledmode, sizeof(uint8_t));
+	if( ESP_OK != rc){
+		light_ledmode_set(0);
 	}
 
 	// set min brigness

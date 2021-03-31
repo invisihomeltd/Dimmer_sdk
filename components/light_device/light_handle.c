@@ -999,7 +999,7 @@ mdf_err_t light_device_init(){
 	sprintf((char *)p_name, _MAC_STR_FORMAT, PR_MAC2STR(self_mac) );
 	// todo set CONFIG_LIGHT_VERSIONP
 	// todo  
-    MDF_ERROR_ASSERT( mlink_add_device(MWIFI_ID, (const char *)p_name, "V0.7.02.3" ));
+    MDF_ERROR_ASSERT( mlink_add_device(MWIFI_ID, (const char *)p_name, "V0.7.04.01" ));
 
 	// device init
 	device_init();

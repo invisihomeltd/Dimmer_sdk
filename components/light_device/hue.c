@@ -213,7 +213,13 @@ esp_err_t hue_active( const char *p_rq, char **pp_http_recv){
 	mlink_json_parse(p_rq,"body", p_buff);
 	MDF_LOGD("p_buff %s\n", p_buff);
 	MDF_LOGD("send  %s  %s to url %s \n", p_g_http_method_str[meth_idex], p_url, p_buff);
-	
+// If node, must send Hue through root.
+/*
+if bool esp_mesh_get_self_organized(void) == true then continue
+else
+esp_err_t esp_mesh_send(constmesh_addr_t *to, constmesh_data_t *data, int flag, constmesh_opt_topt[], int opt_count) WHERE constmesh_addr_t *to is IP/PORT...
+https://github.com/espressif/esp-idf/issues/2028#issuecomment-624420888
+*/	
 	if( 0 == http_perform_as_stream_reader(p_url, meth_idex, p_buff, pp_http_recv)){
 		MDF_LOGW("hue send http rq failt !!\n");
 	}
@@ -234,7 +240,7 @@ void hue_relay(mlink_handle_data_t* p_http_data){
 
 	MDF_LOGE("in %d :  hue_relay %s \n", p_http_data->req_size, p_http_data->req_data);
 
-	if( !DEV_IS_ROOT() || !p_http_data->req_data || p_http_data->req_size <=0 ) 
+	if( !p_http_data->req_data || p_http_data->req_size <=0 ) 
 		return;
 	
 	//get body
@@ -242,7 +248,8 @@ void hue_relay(mlink_handle_data_t* p_http_data){
 	if(p_data && strlen(p_data) > 0 ){
 		mlink_json_parse(p_data,"Hue_request",&p_rq_body);
 		if(p_rq_body && strlen(p_rq_body) > 0){
-			
+
+
 			MDF_LOGW("p_rq_body %s\n", p_rq_body);
 			if( 0 == hue_active(p_rq_body, & p_recv ) ){
 					MDF_LOGD("http receive %s\n", p_recv);

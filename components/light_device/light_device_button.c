@@ -93,7 +93,7 @@ const int keys_event_format[KEYS_EVENT_MAX][4] = {
 	{4500, _ONECLICK, 3,0},//单击
 	{9500, _ONECLICK, 2,0}, // KEYS_EVNET_REST_WIFI
 	{9500, _ONECLICK, 4,0}, //KEYS_EVNET_REST_SYS
-	{1100, 0, 0,0},  // KEYS_EVNET_HOLD
+	{250, 0, 0,0},  // KEYS_EVNET_HOLD
 	{0, 0, 0,0}
 	
 };
